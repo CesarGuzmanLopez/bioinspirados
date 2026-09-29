@@ -43,9 +43,16 @@
       <button id="btn-paso-atras" class="btn" type="button">← paso</button>
       <button id="btn-paso" class="btn" type="button">paso →</button>
       <button id="btn-limpiar" class="btn ghost" type="button">limpiar rastro</button>
-      <label class="speed">velocidad
-        <input id="velocidad" type="range" min="1" max="100" value="45">
+      <label class="speed">tempo
+        <input id="velocidad" type="range" min="1" max="500" step="1" value="60" aria-describedby="tempo-val">
+        <span id="tempo-val" class="tempo-val">60 ms/eval</span>
       </label>
+      <span class="presets" role="group" aria-label="Tempo predefinido">
+        <button id="btn-lento" class="btn small ghost" type="button">Lento</button>
+        <button id="btn-normal" class="btn small ghost" type="button">Normal</button>
+        <button id="btn-rapido" class="btn small ghost" type="button">Rápido</button>
+      </span>
+      <label class="chk-cand"><input id="chk-candidato" type="checkbox" checked> ver candidato</label>
     </div>
     <p class="kbd-hint">Teclado: con el mapa enfocado, <kbd>Supr</kbd> borra la última ciudad · <kbd>Espacio</kbd> reproduce/pausa.</p>
   </section>
@@ -73,6 +80,8 @@
       <div><dt>n</dt><dd id="st-n">—</dd></div>
       <div><dt>costo óptimo</dt><dd id="st-costo">—</dd></div>
       <div><dt>evaluaciones (n−1)!</dt><dd id="st-evals">—</dd></div>
+      <div><dt>candidato en vivo</dt><dd id="st-cand">—</dd></div>
+      <div><dt>ritmo</dt><dd id="st-ritmo">—</dd></div>
       <div><dt>brecha VC vs óptimo</dt><dd id="st-brecha">—</dd></div>
       <div><dt>tiempo</dt><dd id="st-tiempo">—</dd></div>
     </dl>

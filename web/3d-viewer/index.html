@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Visor 3D experimental del TSP: nube xyz + mejor tour en WebGL2 crudo, 100% cliente.">
+<title>lab_bioinspirados · visor 3D (experimental)</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a class="skip" href="#lab3d">Saltar al visor</a>
+
+<header class="site-header">
+  <div class="hero-glow" aria-hidden="true"></div>
+  <div class="wrap hero">
+    <p class="kicker">visor 3D · experimental · sin dependencias</p>
+    <h1 class="title"><span class="title-mono">lab_bioinspirados</span> <span class="title-sep" aria-hidden="true">/</span> <span class="title-display">nube en tres dimensiones</span></h1>
+    <p class="subtitle">Misma semilla que la vista 2D, con <code>z</code> extra: arrastra para orbitar, rueda para zoom. <a href="../index.html">← volver a la vista 2D</a></p>
+  </div>
+</header>
+
+<main class="wrap layout" id="lab3d">
+  <section class="stage card" aria-labelledby="visor-titulo">
+    <div class="stage-head">
+      <h2 id="visor-titulo">Nube xyz + mejor tour</h2>
+      <p class="hint">arrastrar orbita · rueda = zoom</p>
+    </div>
+    <div class="canvas-frame">
+      <canvas id="visor" tabindex="0" role="application"
+        aria-label="Visor 3D de ciudades. Arrastra para orbitar, rueda del ratón para zoom."></canvas>
+      <div id="sin-webgl" class="fallback" hidden>
+        <p><strong>Sin WebGL2 en este navegador:</strong> el visor 3D necesita WebGL2
+        (sin three.js ni build, todo en cliente).</p>
+        <p>La vista 2D sigue completa: <a href="../index.html">← volver a la vista 2D</a></p>
+      </div>
+      <p id="aviso-lod" class="aviso" hidden></p>
+    </div>
+    <div class="transport" role="group" aria-label="Controles de animación">
+      <button id="btn-resolver" class="btn primary" type="button">Resolver</button>
+      <button id="btn-play" class="btn" type="button" aria-pressed="false">▶ reproducir</button>
+      <label class="speed">tempo
+        <input id="velocidad" type="range" min="1" max="500" step="1" value="60" aria-describedby="tempo-val">
+        <span id="tempo-val" class="tempo-val">60 ms/eval</span>
+      </label>
+      <label class="chk-cand"><input id="chk-candidato" type="checkbox" checked> ver candidato</label>
+    </div>
+  </section>
+
+  <aside class="panel card" aria-labelledby="panel-titulo">
+    <h2 id="panel-titulo">Panel de experimento 3D</h2>
+    <div class="grid2">
+      <label>n ciudades
+        <input id="in-n" type="number" min="2" max="100000" step="1" value="200">
+      </label>
+      <label>semilla
+        <input id="in-semilla" type="number" min="0" max="99999" step="1" value="42">
+      </label>
+    </div>
+    <div class="row">
+      <button id="btn-generar" class="btn" type="button">generar</button>
+      <a class="btn ghost" href="../index.html">← vista 2D</a>
+    </div>
+
+    <dl class="stats" aria-live="polite">
+      <div><dt>n</dt><dd id="st-n">—</dd></div>
+      <div><dt>costo mejor</dt><dd id="st-costo">—</dd></div>
+      <div><dt>evaluaciones</dt><dd id="st-evals">—</dd></div>
+      <div><dt>candidato en vivo</dt><dd id="st-cand">—</dd></div>
+      <div><dt>ritmo</dt><dd id="st-ritmo">—</dd></div>
+      <div><dt>tiempo</dt><dd id="st-tiempo">—</dd></div>
+    </dl>
+    <p class="py-hint">Tour canónico abierto (empieza en 0, retorno sumado) · n≤8 fuerza bruta exacta · n&gt;8 vecino-cercano animado · n&gt;5k LOD (puntos + meta-tour).</p>
+  </aside>
+</main>
+
+<footer class="wrap foot">
+  <p>WebGL2 crudo, sin three.js ni build · <a href="../index.html">vista 2D</a>.</p>
+</footer>
+
+<script src="viewer.js" defer></script>
+</body>
+</html>

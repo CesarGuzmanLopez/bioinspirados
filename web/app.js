@@ -67,21 +67,29 @@ const $ = (id) => document.getElementById(id);
 const els = {
   n: $("in-n"), semilla: $("in-semilla"),
   stN: $("st-n"), stCosto: $("st-costo"), stEvals: $("st-evals"),
+  stCand: $("st-cand"), stRitmo: $("st-ritmo"),
   stBrecha: $("st-brecha"), stTiempo: $("st-tiempo"),
   fbCosto: $("cmp-fb-costo"), fbEvals: $("cmp-fb-evals"),
   nnCosto: $("cmp-nn-costo"), nnEvals: $("cmp-nn-evals"),
   pyOrden: $("py-orden"), pyCosto: $("py-costo"),
-  play: $("btn-play"), vel: $("velocidad"),
+  play: $("btn-play"), vel: $("velocidad"), tempoVal: $("tempo-val"),
+  chkCand: $("chk-candidato"),
 };
 
 /* ---------- estado ---------- */
 let puntos = [];            // [{x,y} en [0,1]^2]
 let solucion = null;        // {orden:[...abierto], costo, metodo, evaluaciones, ms, exacto}
 let vecino = null;          // {orden, costo} comparativa
-let stream = null;          // {gen, n, mejor, mejorCosto, actual, evals, t0, terminado, cancelado, timer}
+let stream = null;          // {gen, n, total, mejor, mejorCosto, actual, actualCosto,
+                            //  evals, t0, terminado, cancelado, pausado, timer,
+                            //  historial:[{orden,costo}], vista, verCandidato}
 let anim = { t: 0, playing: false, raf: 0, last: 0, paso: 0 };
 let drag = null;            // {idx, movido}
 let downPos = null;
+/* Historial acotado para paso →/←: n≤8 guarda todo ((n−1)!≤5040);
+   si no, ventana de los últimos 20000 candidatos. El óptimo ámbar
+   nunca depende del historial: siempre visible. */
+const HIST_MAX = 20000;
 
 /* ---------- utils ---------- */
 function mulberry32(semilla) {
@@ -160,6 +168,22 @@ function vecinoCercano() {
 }
 
 /* ---------- resolver streaming vivo + panel ---------- */
+/* ---------- tempo real: ms por evaluación ---------- */
+/** Slider = ms que tarda en PROBAR cada solución (500 lento … 1 rápido). */
+function msPorEval() {
+  const v = parseInt(els.vel.value, 10);
+  return Math.min(500, Math.max(1, Number.isFinite(v) ? v : 60));
+}
+function pintarTempo() {
+  if (els.tempoVal) els.tempoVal.textContent = `${msPorEval()} ms/eval`;
+}
+/** Ritmo real medido: evals / segundo desde t0. */
+function ritmoReal() {
+  if (!stream) return 0;
+  const s = (performance.now() - stream.t0) / 1000;
+  return s > 0 ? stream.evals / s : 0;
+}
+
 function detenerStream(motivo) {
   if (!stream || stream.terminado) return;
   stream.cancelado = true;
@@ -190,9 +214,17 @@ function resolver() {
   const n = puntos.length;
   vecino = vecinoCercano();
   stream = {
-    gen: toursLazy(n), n, mejor: null, mejorCosto: Infinity, actual: null,
-    evals: 0, t0: performance.now(), terminado: false, cancelado: false, timer: 0,
+    gen: toursLazy(n), n, total: null, mejor: null, mejorCosto: Infinity,
+    actual: null, actualCosto: Infinity,
+    evals: 0, t0: performance.now(), terminado: false, cancelado: false,
+    pausado: REDUCED, timer: 0, historial: [], vista: -1,
+    verCandidato: els.chkCand ? els.chkCand.checked : true,
   };
+  try {
+    let f = 1;
+    for (let i = 2; i <= n - 1; i++) { f *= i; if (!isFinite(f) || f > 1e15) { f = Infinity; break; } }
+    stream.total = isFinite(f) ? f : null;
+  } catch { stream.total = null; }
   solucion = null;
   anim.t = 0; anim.paso = 0;
   const grande = n > 10;
@@ -202,58 +234,128 @@ function resolver() {
     : `explorando ${(espacioTexto(n))} tours en vivo…`;
   actualizarAviso3D();
   actualizarBotonDetener();
-  bombear();
+  pintarTempo();
+  // Sin autoplay con prefers-reduced-motion: queda pausado en eval 0.
+  setPlay(!REDUCED);
+  if (REDUCED) { pintarPanel(0); dibujar(); }
 }
 
-/** Hook 3D: n>200 sugiere vista 3D (texto + enlace) sin bloquear la 2D.
- *  No existe aún web/3d-viewer: el enlace es el hook; la 2D + LOD siguen activas. */
+/** Hook 3D: n>200 sugiere la vista 3D (web/3d-viewer/) sin bloquear la 2D.
+ *  El enlace arrastra n+semilla (?n=&semilla=) para replicar la instancia. */
 function actualizarAviso3D() {
   if (!aviso3d) return;
-  aviso3d.hidden = !(puntos.length > 200);
+  const mostrar = puntos.length > 200;
+  aviso3d.hidden = !mostrar;
+  if (mostrar) {
+    const a = aviso3d.querySelector("a");
+    if (a) {
+      const semilla = els.semilla ? els.semilla.value : "42";
+      a.href = `3d-viewer/index.html?n=${puntos.length}&semilla=${encodeURIComponent(semilla)}`;
+    }
+  }
 }
 
-/** Procesa un chunk acotado por tiempo (~24 ms) y reprograma: la UI nunca se cuelga. */
-function bombear() {
-  if (!stream || stream.cancelado) return;
-  const lote = Math.round(200 + velocidad() * 8000); // autoplay con velocidad
-  const fin = performance.now() + 24;
-  let hechos = 0, avanzada = false;
-  while (hechos < lote && performance.now() < fin) {
-    const sig = stream.gen.next();
-    if (sig.done) { avanzada = true; break; }
-    const orden = sig.value;
-    stream.actual = orden;
-    const c = costoDe(orden);
-    stream.evals++;
-    hechos++;
-    if (c < stream.mejorCosto) { stream.mejorCosto = c; stream.mejor = orden; } // < estricto
-  }
-  const ms = performance.now() - stream.t0;
+/** Guarda el candidato en el historial acotado (para paso →/←). */
+function archivarCandidato(orden, costo) {
+  if (!stream) return;
+  stream.historial.push({ orden: [...orden], costo });
+  if (stream.historial.length > HIST_MAX) stream.historial.shift();
+  stream.vista = stream.historial.length - 1;
+}
+
+/** Evalúa UN tour: avanza el generador, mide costo, actualiza mejor (< estricto).
+ *  Devuelve false si se agotó la enumeración. */
+function evaluarUno() {
+  const sig = stream.gen.next();
+  if (sig.done) return false;
+  const orden = sig.value;
+  const c = costoDe(orden);
+  stream.actual = [...orden];
+  stream.actualCosto = c;
+  stream.evals++;
+  archivarCandidato(orden, c);
+  if (c < stream.mejorCosto) { stream.mejorCosto = c; stream.mejor = [...orden]; } // < estricto
+  return true;
+}
+
+function publicarMs() { return performance.now() - stream.t0; }
+
+function terminarStream(avanzada) {
+  const ms = publicarMs();
   solucion = {
-    orden: stream.mejor, costo: stream.mejorCosto, metodo: "fuerza bruta (vivo)",
-    exacto: avanzada, evaluaciones: stream.evals, ms, detenido: false,
+    orden: stream.mejor ? [...stream.mejor] : null, costo: stream.mejorCosto,
+    metodo: "fuerza bruta (vivo)", exacto: avanzada,
+    evaluaciones: stream.evals, ms, detenido: false,
   };
+  stream.terminado = true;
   pintarPanel(ms);
+  actualizarBotonDetener();
   dibujar();
   if (avanzada) {
-    stream.terminado = true;
     aviso.textContent = `óptimo exacto tras ${stream.evals.toLocaleString("es")} evaluaciones (${ms.toFixed(0)} ms).`;
-    actualizarBotonDetener();
-    const autoplay = !REDUCED;
-    setPlay(autoplay);
-    if (!autoplay) anim.t = 1;
+    setPlay(false);
+    if (!REDUCED) setPlay(true); // terminado: solo anima la hormiga
     dibujar();
-    return;
   }
-  stream.timer = setTimeout(bombear, 0);
 }
 
+/** Reprograma el siguiente tick según el tempo (ms por evaluación). */
+function programar() {
+  if (!stream || stream.cancelado || stream.terminado || stream.pausado) return;
+  clearTimeout(stream.timer);
+  const ms = msPorEval();
+  stream.timer = setTimeout(tickEval, ms >= 16 ? ms : 16);
+}
+
+/** Tick de evaluación con tempo real: 1 tour por tick en lento (≥16 ms);
+ *  en rápido (<16 ms) evalúa un chunk por frame (~16 ms de evaluaciones)
+ *  para no colgar la UI. El óptimo ámbar nunca se borra; el candidato
+ *  violeta tenue muestra lo que se está probando ahora. */
+function tickEval() {
+  if (!stream || stream.cancelado || stream.terminado || stream.pausado) return;
+  const ms = msPorEval();
+  if (ms >= 16) {
+    if (!evaluarUno()) { terminarStream(true); return; }
+  } else {
+    // Rápido: chunk por frame (~16 ms de evaluaciones) para no colgar.
+    const chunk = Math.min(50000, Math.max(1, Math.round(16 / ms)));
+    const fin = performance.now() + 24; // presupuesto por frame
+    let hechos = 0, agotado = false;
+    while (hechos < chunk && performance.now() < fin) {
+      if (!evaluarUno()) { agotado = true; break; }
+      hechos++;
+    }
+    if (agotado || hechos === 0) { terminarStream(true); return; }
+  }
+  const t = publicarMs();
+  solucion = {
+    orden: stream.mejor ? [...stream.mejor] : null, costo: stream.mejorCosto,
+    metodo: "fuerza bruta (vivo)", exacto: false,
+    evaluaciones: stream.evals, ms: t, detenido: false,
+  };
+  pintarPanel(t);
+  dibujar();
+  programar();
+}
+
+/** Compat: el bucle antiguo se llamaba bombear(); ahora es programar(). */
+function bombear() { programar(); }
+
 function pintarPanelVacio() {
-  for (const k of ["stN", "stCosto", "stEvals", "stBrecha", "stTiempo"]) els[k].textContent = "—";
+  for (const k of ["stN", "stCosto", "stEvals", "stCand", "stRitmo", "stBrecha", "stTiempo"]) {
+    if (els[k]) els[k].textContent = "—";
+  }
   els.fbCosto.textContent = els.fbEvals.textContent = "—";
   els.nnCosto.textContent = els.nnEvals.textContent = "—";
   els.pyOrden.textContent = "orden: —";
   els.pyCosto.textContent = "costo: —";
+}
+
+function fmtEval(i, n) {
+  const total = stream && stream.total != null
+    ? stream.total.toLocaleString("es")
+    : espacioTexto(n);
+  return `${i.toLocaleString("es")} / ${total}`;
 }
 
 function pintarPanel(ms) {
@@ -261,19 +363,45 @@ function pintarPanel(ms) {
   els.stN.textContent = String(n);
   if (!solucion || !solucion.orden) {
     els.stCosto.textContent = "explorando…";
-    els.stEvals.textContent = `0 en vivo / ${espacioTexto(n)}`;
+    els.stEvals.textContent = stream ? fmtEval(stream.evals, n) : `0 en vivo / ${espacioTexto(n)}`;
     els.stBrecha.textContent = "—";
     els.stTiempo.textContent = `${ms.toFixed(0)} ms`;
+    if (els.stCand) {
+      els.stCand.textContent = stream && stream.actual
+        ? `${ordenCerrado(stream.actual)} · ${fmtCosto(stream.actualCosto)}`
+        : "—";
+    }
+    if (els.stRitmo) els.stRitmo.textContent = stream ? `${ritmoReal().toFixed(1)} tours/s` : "—";
   } else if (solucion.exacto) {
     els.stCosto.textContent = `${fmtCosto(solucion.costo)} (óptimo)`;
     els.stEvals.textContent = `${solucion.evaluaciones.toLocaleString("es")} = (${n}−1)!`;
     const brecha = solucion.costo > 0 ? ((vecino.costo - solucion.costo) / solucion.costo) * 100 : 0;
     els.stBrecha.textContent = `${brecha.toFixed(1)} %`;
-  } else {
+    if (els.stCand) {
+      els.stCand.textContent = stream && stream.actual
+        ? `${ordenCerrado(stream.actual)} · ${fmtCosto(stream.actualCosto)}`
+        : `óptimo ${ordenCerrado(solucion.orden)}`;
+    }
+    if (els.stRitmo) {
+      els.stRitmo.textContent = stream
+        ? `${ritmoReal().toFixed(1)} tours/s`
+        : `${solucion.evaluaciones.toLocaleString("es")} evals`;
+    }  } else {
     const marca = solucion.detenido ? "detenido" : "mejor vivo";
     els.stCosto.textContent = `${fmtCosto(solucion.costo)} (${marca})`;
-    els.stEvals.textContent = `${solucion.evaluaciones.toLocaleString("es")} en vivo / ${espacioTexto(n)}`;
+    els.stEvals.textContent = stream ? fmtEval(stream.evals, n)
+      : `${solucion.evaluaciones.toLocaleString("es")} en vivo / ${espacioTexto(n)}`;
     els.stBrecha.textContent = "sin fin garantizado";
+    if (els.stCand) {
+      els.stCand.textContent = stream && stream.actual
+        ? `${ordenCerrado(stream.actual)} · ${fmtCosto(stream.actualCosto)}`
+        : "—";
+    }
+    if (els.stRitmo) {
+      els.stRitmo.textContent = stream
+        ? `${ritmoReal().toFixed(1)} tours/s · ${msPorEval()} ms/eval`
+        : `${solucion.evaluaciones.toLocaleString("es")} evals`;
+    }
   }
   els.stTiempo.textContent = `${ms.toFixed(0)} ms`;
   els.fbCosto.textContent = solucion && solucion.orden ? fmtCosto(solucion.costo) : "en vivo…";
@@ -348,9 +476,11 @@ function rutaPx(orden) {
   return pts;
 }
 
-/** Candidato actual tenue: lo que se está evaluando ahora mismo. */
+/** Candidato actual tenue (violeta): lo que se está probando ahora mismo.
+ *  El óptimo ámbar (dibujarTour) siempre se pinta encima: nunca se borra. */
 function dibujarCandidato() {
   if (!stream || !stream.actual) return;
+  if (els.chkCand && !els.chkCand.checked) return;
   if (solucion && solucion.orden && stream.actual === solucion.orden) return;
   const pts = rutaPx(stream.actual);
   ctx.save();
@@ -367,7 +497,8 @@ function dibujarCandidato() {
 
 function dibujarTour(lod) {
   const pts = rutaPx(solucion.orden);
-  const prog = solucion.orden.length > 0 ? anim.t : 1;
+  // Óptimo fijo siempre completo; solo se revela por tramos mientras anima.
+  const prog = anim.playing ? anim.t : 1;
   // halo ámbar bioluminiscente
   ctx.save();
   ctx.lineJoin = "round"; ctx.lineCap = "round";
@@ -405,40 +536,64 @@ function dibujarHormiga() {
   ctx.restore();
 }
 
-/* ---------- animación ---------- */
-function velocidad() { return els.vel.value / 100; } // 0.01..1
+/* ---------- animación (hormiga sobre el óptimo; el tempo lo da el slider) ---------- */
 function tick(now) {
   if (!anim.playing) return;
   const dt = Math.min(0.1, (now - anim.last) / 1000);
   anim.last = now;
-  const vueltasPorSeg = 0.06 + velocidad() * 0.5; // tour completo en ~2–16 s
-  anim.t = (anim.t + dt * vueltasPorSeg) % 1;
+  const vueltasPorSeg = 0.25; // una vuelta cada ~4 s; la velocidad de
+  anim.t = (anim.t + dt * vueltasPorSeg) % 1; // evaluación la marca ms/eval
   dibujar();
   anim.raf = requestAnimationFrame(tick);
 }
+/** Reproducir = reanuda la evaluación con tempo + anima la hormiga.
+ *  Pausar = congela la evaluación (el óptimo y el candidato quedan fijos). */
 function setPlay(on) {
-  if (!solucion) on = false;
-  anim.playing = on;
+  if (on && !stream) on = false;
+  if (on && stream && (stream.terminado || stream.cancelado)) {
+    // Stream agotado/detenido: solo anima la hormiga sobre el óptimo.
+    anim.playing = !REDUCED ? true : false;
+    els.play.textContent = anim.playing ? "❚❚ pausar" : "▶ reproducir";
+    els.play.setAttribute("aria-pressed", String(anim.playing));
+    cancelAnimationFrame(anim.raf);
+    if (anim.playing) { anim.last = performance.now(); anim.raf = requestAnimationFrame(tick); }
+    else dibujar();
+    return;
+  }
+  if (stream) {
+    stream.pausado = !on;
+    clearTimeout(stream.timer);
+  }
+  anim.playing = on && !REDUCED;
   els.play.textContent = on ? "❚❚ pausar" : "▶ reproducir";
   els.play.setAttribute("aria-pressed", String(on));
   cancelAnimationFrame(anim.raf);
-  if (on) { anim.last = performance.now(); anim.raf = requestAnimationFrame(tick); }
+  if (anim.playing) { anim.last = performance.now(); anim.raf = requestAnimationFrame(tick); }
   else dibujar();
+  if (on && stream && !stream.terminado && !stream.cancelado) programar();
+  actualizarBotonDetener();
 }
+/** Paso →: avanza un candidato en el historial (pausa primero).
+ *  El óptimo ámbar se mantiene; solo cambia el violeta tenue. */
 function paso() {
-  if (!solucion || !solucion.orden) return;
-  setPlay(false);
-  const total = solucion.orden.length;
-  anim.paso = (anim.paso + 1) % total;
-  anim.t = anim.paso / total;
-  dibujar();
+  if (!stream || !stream.historial.length) return;
+  if (!stream.pausado && !stream.terminado) setPlay(false);
+  if (stream.vista < stream.historial.length - 1) stream.vista++;
+  mostrarVista();
 }
+/** ← paso: retrocede un candidato en el historial (pausa primero). */
 function pasoAtras() {
-  if (!solucion || !solucion.orden) return;
-  setPlay(false);
-  const total = solucion.orden.length;
-  anim.paso = (anim.paso - 1 + total) % total;
-  anim.t = anim.paso / total;
+  if (!stream || !stream.historial.length) return;
+  if (!stream.pausado && !stream.terminado) setPlay(false);
+  if (stream.vista > 0) stream.vista--;
+  mostrarVista();
+}
+function mostrarVista() {
+  const h = stream.historial[stream.vista];
+  if (!h) return;
+  stream.actual = [...h.orden];
+  stream.actualCosto = h.costo;
+  pintarPanel(publicarMs());
   dibujar();
 }
 
@@ -509,7 +664,11 @@ canvas.addEventListener("keydown", (ev) => {
     puntos.pop();
     cancelarSilencioso();
     solucion = null; pintarPanelVacio(); setPlay(false); dibujar();
-  } else if (ev.key === " ") { ev.preventDefault(); setPlay(!anim.playing); }
+  } else if (ev.key === " ") {
+    ev.preventDefault();
+    const enMarcha = stream ? !stream.pausado && !stream.terminado : anim.playing;
+    setPlay(!enMarcha);
+  }
 });
 
 /* ---------- controles ---------- */
@@ -542,17 +701,26 @@ $("btn-cuadrado").addEventListener("click", () => {
 });
 $("btn-resolver").addEventListener("click", resolver);
 $("btn-detener").addEventListener("click", () => detenerStream("detenido por el usuario"));
-/** El botón Detener solo tiene sentido mientras el stream bombea. */
+/** El botón Detener solo tiene sentido mientras el stream bombea o está pausado. */
 function actualizarBotonDetener() {
   const btn = $("btn-detener");
   if (!btn) return;
-  const vivo = Boolean(stream && !stream.terminado);
+  const vivo = Boolean(stream && !stream.terminado && !stream.cancelado);
   btn.disabled = !vivo;
   btn.setAttribute("aria-disabled", String(!vivo));
 }
-els.play.addEventListener("click", () => setPlay(!anim.playing));
+els.play.addEventListener("click", () => {
+  const enMarcha = stream ? !stream.pausado && !stream.terminado : anim.playing;
+  setPlay(!enMarcha);
+});
 $("btn-paso").addEventListener("click", paso);
 $("btn-paso-atras").addEventListener("click", pasoAtras);
+if (els.vel) els.vel.addEventListener("input", pintarTempo);
+const tempo = (ms) => { if (els.vel) { els.vel.value = String(ms); pintarTempo(); } };
+$("btn-lento").addEventListener("click", () => tempo(500));
+$("btn-normal").addEventListener("click", () => tempo(60));
+$("btn-rapido").addEventListener("click", () => tempo(1));
+if (els.chkCand) els.chkCand.addEventListener("change", dibujar);
 $("btn-limpiar").addEventListener("click", () => { anim.t = 0; anim.paso = 0; setPlay(false); });
 $("btn-copiar").addEventListener("click", async () => {
   if (!solucion || !solucion.orden) return;
@@ -564,5 +732,6 @@ $("btn-copiar").addEventListener("click", async () => {
 
 /* ---------- init ---------- */
 generar();
+pintarTempo();
 ajustarCanvas();
 requestAnimationFrame(() => ajustarCanvas());

@@ -52,10 +52,22 @@ def listar(registro) -> None:
         print(f"  - {info.nombre}{marca}{extra}")
 
 
-def demo_cuadrado(vista: VistaConsola) -> None:
+def demo_cuadrado(vista: VistaConsola, cada_n_pasos: int = 1) -> None:
+    """Cuadrado n=4 imprimiendo CADA solución probada (cada_n_pasos=1).
+
+    ``cada_n_pasos`` es el paso de emisión del observador: 1 = ver cada
+    tour evaluado (modo lento docente); súbelo para ir más rápido.
+    """
     print("== demo TSP cuadrado n=4 (óptimo 4.0) ==")
     problema = Viajero(coordenadas=CUADRADO)
-    resultado = FuerzaBruta().resolver(problema)
+
+    def _progreso(paso) -> None:
+        print(
+            f"   evals={paso.evaluaciones:>3} costo={paso.mejor.costo:.6g} "
+            f"mejor={' → '.join(map(str, (*paso.mejor.orden, 0)))}"
+        )
+
+    resultado = FuerzaBruta(observador=_progreso, cada_n_pasos=cada_n_pasos).resolver(problema)
     ok_costo, ok_orden = verificar(problema, resultado.solucion)
     vista.mostrar(resultado)
     vista.render(
@@ -101,16 +113,17 @@ def demo_grande(vista: VistaConsola) -> None:
     print(f"   corte limpio: agotado={resultado.agotado} motivo={resultado.motivo_corte}")
 
 
-def main() -> None:
+def main(cada_n_pasos: int = 1) -> None:
     cargador = Loader()
     registro = cargador.descubrir()
     listar(registro)
     vista = VistaConsola()
-    demo_cuadrado(vista)
+    demo_cuadrado(vista, cada_n_pasos=cada_n_pasos)
     demo_mochila(vista)
     demo_grande(vista)
     print("== OK: terminal accesible ==")
 
 
 if __name__ == "__main__":
-    main()
+    _cada = int(sys.argv[1]) if len(sys.argv) > 1 else 1
+    main(cada_n_pasos=_cada)

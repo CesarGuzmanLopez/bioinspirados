@@ -109,6 +109,10 @@ kbd { font-family: var(--mono); border: 1px solid var(--line); border-bottom-wid
 .btn.small { font-size: .82rem; padding: .35rem .7rem; }
 .speed { margin-left: auto; display: flex; align-items: center; gap: .5rem; color: var(--ink-dim); font-size: .88rem; }
 input[type="range"] { accent-color: var(--ambar); width: 140px; }
+.tempo-val { font-family: var(--mono); font-size: .8rem; color: var(--ambar-hot); min-width: 7.5em; }
+.presets { display: flex; gap: .35rem; }
+.chk-cand { display: flex; align-items: center; gap: .4rem; font-size: .88rem; color: var(--ink-dim); cursor: pointer; }
+.chk-cand input { accent-color: var(--violeta); width: 1rem; height: 1rem; }
 
 /* ---------- panel ---------- */
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: .7rem; }
