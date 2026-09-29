@@ -1,0 +1,15 @@
+# Entornos virtuales
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Herramientas
+.playwright-mcp/
+.ruff_cache/
+
+# Temporal
+/tmp/

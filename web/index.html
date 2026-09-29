@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Laboratorio interactivo: ver y entender fuerza bruta en el TSP.">
+<title>lab_bioinspirados · Laboratorio TSP</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a class="skip" href="#lab">Saltar al laboratorio</a>
+
+<header class="site-header">
+  <div class="hero-glow" aria-hidden="true"></div>
+  <div class="wrap hero">
+    <p class="kicker">Laboratorio docente · algoritmos bioinspirados</p>
+    <h1 class="title"><span class="title-mono">lab_bioinspirados</span> <span class="title-sep" aria-hidden="true">/</span> <span class="title-display">el rastro de las hormigas</span></h1>
+    <p class="subtitle">Un solo job: <strong>ver y entender fuerza bruta en el TSP</strong>. Toca el mapa, mueve ciudades y mira cómo el óptimo emerge del enjambre.</p>
+    <div class="hero-badges">
+      <span class="badge">streaming vivo · sin tope de nodos</span>
+      <span class="badge">n grande · muestreo cancelable</span>
+      <span class="badge">100% cliente · sin backend</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap layout" id="lab">
+  <section class="stage card" aria-labelledby="mapa-titulo">
+    <div class="stage-head">
+      <h2 id="mapa-titulo">Mapa de ciudades</h2>
+      <p class="hint">clic añade · arrastra para mover · doble-clic borra</p>
+    </div>
+    <div class="canvas-frame">
+      <canvas id="mapa" tabindex="0" role="application"
+        aria-label="Mapa de ciudades. Clic para añadir ciudad, arrastrar para mover, doble clic para borrar."></canvas>
+      <p id="aviso-heuristica" class="aviso" hidden></p>
+      <p id="aviso-3d" class="aviso" hidden>n&gt;200: la vista 2D sigue activa · <a href="3d-viewer/index.html">abrir vista 3D (experimental)</a></p>
+    </div>
+    <div class="transport" role="group" aria-label="Controles de animación">
+      <button id="btn-resolver" class="btn primary" type="button">Resolver</button>
+      <button id="btn-detener" class="btn" type="button" disabled aria-disabled="true">■ detener</button>
+      <button id="btn-play" class="btn" type="button" aria-pressed="false">▶ reproducir</button>
+      <button id="btn-paso-atras" class="btn" type="button">← paso</button>
+      <button id="btn-paso" class="btn" type="button">paso →</button>
+      <button id="btn-limpiar" class="btn ghost" type="button">limpiar rastro</button>
+      <label class="speed">velocidad
+        <input id="velocidad" type="range" min="1" max="100" value="45">
+      </label>
+    </div>
+    <p class="kbd-hint">Teclado: con el mapa enfocado, <kbd>Supr</kbd> borra la última ciudad · <kbd>Espacio</kbd> reproduce/pausa.</p>
+  </section>
+
+  <aside class="panel card" aria-labelledby="panel-titulo">
+    <h2 id="panel-titulo">Panel de experimento</h2>
+    <div class="grid2">
+      <label>n ciudades
+        <input id="in-n" type="number" min="2" max="1000" step="1" value="5">
+      </label>
+      <label>semilla
+        <input id="in-semilla" type="number" min="0" max="99999" step="1" value="42">
+      </label>
+    </div>
+    <div class="grid2">
+      <label>solver<select id="sel-solver" aria-label="Solver"></select></label>
+      <label>problema<select id="sel-problema" aria-label="Problema"></select></label>
+    </div>
+    <div class="row">
+      <button id="btn-generar" class="btn" type="button">generar</button>
+      <button id="btn-cuadrado" class="btn ghost" type="button" title="El caso canónico de ejemplos/tsp_manual.py">cuadrado n=4</button>
+    </div>
+
+    <dl class="stats" aria-live="polite">
+      <div><dt>n</dt><dd id="st-n">—</dd></div>
+      <div><dt>costo óptimo</dt><dd id="st-costo">—</dd></div>
+      <div><dt>evaluaciones (n−1)!</dt><dd id="st-evals">—</dd></div>
+      <div><dt>brecha VC vs óptimo</dt><dd id="st-brecha">—</dd></div>
+      <div><dt>tiempo</dt><dd id="st-tiempo">—</dd></div>
+    </dl>
+
+    <h3>Comparativa · misma instancia</h3>
+    <table class="cmp">
+      <thead><tr><th scope="col">método</th><th scope="col">costo</th><th scope="col">evals</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">fuerza bruta</th><td id="cmp-fb-costo">—</td><td id="cmp-fb-evals">—</td></tr>
+        <tr><th scope="row">vecino-cercano</th><td id="cmp-nn-costo">—</td><td id="cmp-nn-evals">—</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Corrige con Python</h3>
+    <p class="py-hint">Mismo formato que <code>ejemplos/tsp_manual.py</code> (<code>VistaConsola</code>): orden cerrado con <code>→</code> y costo con 6 cifras significativas.</p>
+    <div class="py-box">
+      <code id="py-orden">orden: —</code>
+      <code id="py-costo">costo: —</code>
+      <button id="btn-copiar" class="btn small" type="button">copiar para corregir</button>
+    </div>
+<pre class="py-snippet"><code># en ejemplos/tsp_manual.py
+from lab_bioinspirados.problemas.viajero import Viajero
+from lab_bioinspirados.solvers.fuerza_bruta import FuerzaBruta
+pb = Viajero(coordenadas=[...])  # pega tus puntos
+sol = FuerzaBruta().resolver(pb).solucion
+print(" → ".join(map(str, (*sol.orden, sol.orden[0]))), f"{sol.costo:.6g}")</code></pre>
+  </aside>
+</main>
+
+<footer class="wrap foot">
+  <p>Fuerza bruta enumera tours canónicos abiertos (empiezan en 0, desempate &lt; estricto: el primero gana) · espacio (n−1)! · <code>python3 -m http.server</code> en <code>web/</code>.</p>
+</footer>
+
+<script src="app.js" defer></script>
+</body>
+</html>

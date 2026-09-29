@@ -1,0 +1,14 @@
+Total messages: 2 (Errors: 2, Warnings: 0)
+Returning 11 messages for level "error"
+
+[ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:8000/:0
+[ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:8000/favicon.ico:0
+[ERROR] Failed to load resource: the server responded with a status of 401 () @ http://localhost:9000/api/navigation/global:0
+[ERROR] Response @ http://localhost:9000/js/echoes-DaE4R_0k.js:1
+[ERROR] Failed to load resource: the server responded with a status of 401 () @ http://localhost:9000/api/features/list:0
+[ERROR] Application failed to start Response @ http://localhost:9000/js/echoes-DaE4R_0k.js:1
+[ERROR] Failed to load resource: the server responded with a status of 401 () @ http://localhost:9000/api/settings/values?keys=sonar.architecture.visualization.enabled:0
+[ERROR] Failed to load resource: the server responded with a status of 401 () @ http://localhost:9000/api/users/current:0
+[ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://localhost:8030/api/registro:0
+[ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://localhost:8030/favicon.ico:0
+Response

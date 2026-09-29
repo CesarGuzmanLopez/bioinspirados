@@ -1,0 +1,114 @@
+- generic [active] [ref=f13e1]:
+  - link "Saltar al laboratorio" [ref=f13e2] [cursor=pointer]:
+    - /url: "#lab"
+  - banner [ref=f13e3]:
+    - generic [ref=f13e4]:
+      - paragraph [ref=f13e5]: Laboratorio docente · algoritmos bioinspirados
+      - heading "lab_bioinspirados el rastro de las hormigas" [level=1] [ref=f13e6]: lab_bioinspirados / el rastro de las hormigas
+      - paragraph [ref=f13e7]:
+        - text: "Un solo job:"
+        - strong [ref=f13e8]: ver y entender fuerza bruta en el TSP
+        - text: . Toca el mapa, mueve ciudades y mira cómo el óptimo emerge del enjambre.
+      - generic [ref=f13e9]:
+        - generic [ref=f13e10]: n ≤ 8 · fuerza bruta exacta
+        - generic [ref=f13e11]: n > 8 · vecino-cercano + aviso
+        - generic [ref=f13e12]: 100% cliente · sin backend
+  - main [ref=f13e13]:
+    - region [ref=f13e14]:
+      - generic [ref=f13e15]:
+        - heading "Mapa de ciudades" [level=2] [ref=f13e16]
+        - paragraph [ref=f13e17]: clic añade · arrastra para mover · doble-clic borra
+      - application "Mapa de ciudades. Clic para añadir ciudad, arrastrar para mover, doble clic para borrar." [ref=f13e19]
+      - group "Controles de animación" [ref=f13e20]:
+        - button "Resolver" [ref=f13e21] [cursor=pointer]
+        - button "▶ reproducir" [ref=f13e22] [cursor=pointer]
+        - button "paso →" [ref=f13e23] [cursor=pointer]
+        - button "limpiar rastro" [ref=f13e24] [cursor=pointer]
+        - generic [ref=f13e25]:
+          - text: velocidad
+          - slider "velocidad" [ref=f13e26]: "45"
+      - paragraph [ref=f13e27]: "Teclado: con el mapa enfocado, Supr borra la última ciudad · Espacio reproduce/pausa."
+    - complementary [ref=f13e28]:
+      - heading "Panel de experimento" [level=2] [ref=f13e29]
+      - generic [ref=f13e30]:
+        - generic [ref=f13e31]:
+          - text: n ciudades
+          - spinbutton "n ciudades" [ref=f13e32]: "5"
+        - generic [ref=f13e33]:
+          - text: semilla
+          - spinbutton "semilla" [ref=f13e34]: "42"
+      - generic [ref=f13e35]:
+        - text: solver
+        - combobox "Solver" [ref=f13e36]:
+          - option "fuerza-bruta" [selected]
+          - option "vecino-cercano (pendiente)"
+          - option "busqueda-local (pendiente)"
+          - option "colonia-hormigas (pendiente)"
+          - option "abejas-abc (pendiente)"
+          - option "busqueda-tabu (pendiente)"
+          - option "recocido-simulado (pendiente)"
+      - generic [ref=f13e37]:
+        - text: problema
+        - combobox "Problema" [ref=f13e38]:
+          - option "TSP-cuadrado" [selected]
+          - option "mochila-binaria"
+          - option "n-reinas (pendiente)"
+          - option "coloreo-grafos (pendiente)"
+          - option "one-max (pendiente)"
+          - option "tsp-nube (pendiente)"
+      - generic [ref=f13e39]:
+        - button "generar" [ref=f13e40] [cursor=pointer]
+        - button "cuadrado n=4" [ref=f13e41] [cursor=pointer]
+      - generic [ref=f13e42]:
+        - generic [ref=f13e43]:
+          - term [ref=f13e44]: "n"
+          - definition [ref=f13e45]: —
+        - generic [ref=f13e46]:
+          - term [ref=f13e47]: costo óptimo
+          - definition [ref=f13e48]: —
+        - generic [ref=f13e49]:
+          - term [ref=f13e50]: evaluaciones (n−1)!
+          - definition [ref=f13e51]: —
+        - generic [ref=f13e52]:
+          - term [ref=f13e53]: brecha VC vs óptimo
+          - definition [ref=f13e54]: —
+        - generic [ref=f13e55]:
+          - term [ref=f13e56]: tiempo
+          - definition [ref=f13e57]: —
+      - heading "Comparativa · misma instancia" [level=3] [ref=f13e58]
+      - table [ref=f13e59]:
+        - rowgroup [ref=f13e60]:
+          - row [ref=f13e61]:
+            - columnheader "método" [ref=f13e62]
+            - columnheader "costo" [ref=f13e63]
+            - columnheader "evals" [ref=f13e64]
+        - rowgroup [ref=f13e65]:
+          - row [ref=f13e66]:
+            - rowheader "fuerza bruta" [ref=f13e67]
+            - cell "—" [ref=f13e68]
+            - cell "—" [ref=f13e69]
+          - row [ref=f13e70]:
+            - rowheader "vecino-cercano" [ref=f13e71]
+            - cell "—" [ref=f13e72]
+            - cell "—" [ref=f13e73]
+      - heading "Corrige con Python" [level=3] [ref=f13e74]
+      - paragraph [ref=f13e75]:
+        - text: Mismo formato que
+        - code [ref=f13e76]: ejemplos/tsp_manual.py
+        - text: (
+        - code [ref=f13e77]: VistaConsola
+        - text: "): orden cerrado con"
+        - code [ref=f13e78]: →
+        - text: y costo con 6 cifras significativas.
+      - generic [ref=f13e79]:
+        - code [ref=f13e80]: "orden: —"
+        - code [ref=f13e81]: "costo: —"
+        - button "copiar para corregir" [ref=f13e82] [cursor=pointer]
+      - code [ref=f13e84]: "# en ejemplos/tsp_manual.py from lab_bioinspirados.problemas.tsp import TSPCuadrado from lab_bioinspirados.solvers.fuerza_bruta import FuerzaBruta pb = TSPCuadrado(coordenadas=[...]) # pega tus puntos sol = FuerzaBruta().resolver(pb).solucion print(\" → \".join(map(str, (*sol.orden, sol.orden[0]))), f\"{sol.costo:.6g}\")"
+  - contentinfo [ref=f13e85]:
+    - paragraph [ref=f13e86]:
+      - text: "Fuerza bruta enumera tours canónicos abiertos (empiezan en 0, desempate < estricto: el primero gana) · espacio (n−1)! ·"
+      - code [ref=f13e87]: python3 -m http.server
+      - text: en
+      - code [ref=f13e88]: web/
+      - text: .
