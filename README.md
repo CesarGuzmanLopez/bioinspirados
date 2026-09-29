@@ -3,6 +3,32 @@
 Laboratorio docente: algoritmos bioinspirados con desacoplo estricto
 **Problemas / Solvers / Vista**. Lógica primero, elegante y simple.
 
+## Ejemplo mínimo (copiable)
+
+Instalación y demo en terminal:
+
+```bash
+pip install -e .
+python -m adaptadores.terminal
+```
+
+Uso desde Python (4 ciudades en un cuadrado unidad):
+
+```python
+from lab_bioinspirados.problemas.viajero import Viajero
+from lab_bioinspirados.solvers.fuerza_bruta import FuerzaBruta
+
+p = Viajero(coordenadas=[(0, 0), (1, 0), (1, 1), (0, 1)])
+r = FuerzaBruta().resolver(p)
+print(r.solucion.orden, r.solucion.costo)   # (0, 1, 2, 3) 4.0
+```
+
+UI web estática (servida desde `web/`):
+
+```bash
+cd web && python3 -m http.server 8030      # http://localhost:8030
+```
+
 ## Instalar y correr
 
 ```bash
