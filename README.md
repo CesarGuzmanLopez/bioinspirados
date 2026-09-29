@@ -1,7 +1,9 @@
-# lab-bioinspirados (fase 0+1)
+# bioinspirados (laboratorio)
 
-Laboratorio docente: algoritmos bioinspirados con desacoplo estricto
-**Problemas / Solvers / Vista**. Lógica primero, elegante y simple.
+Laboratorio docente de algoritmos bioinspirados para muchos problemas:
+viajero (TSP), mochila, n-reinas, coloreo, one-max y más. Desacoplo
+estricto **Problemas / Solvers / Vista**. Lógica primero, elegante y
+simple. (Paquete Python: `lab_bioinspirados`.)
 
 ## Ejemplo mínimo (copiable)
 
