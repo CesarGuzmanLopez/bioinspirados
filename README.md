@@ -31,6 +31,17 @@ UI web estática (servida desde `web/`):
 cd web && python3 -m http.server 8030      # http://localhost:8030
 ```
 
+## Entorno (Ubuntu sin root)
+
+Sin `sudo` y sin `--break-system-packages`: todo vive en `.venv` local.
+Puertos >1024 (la web usa el 8030).
+
+```bash
+bash scripts/setup.sh          # crea .venv e instala con pip install -e .
+. .venv/bin/activate           # activar en cada terminal nueva
+cd web && python3 -m http.server 8030      # http://localhost:8030
+```
+
 ## Instalar y correr
 
 ```bash
